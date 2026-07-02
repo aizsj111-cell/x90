@@ -1,5 +1,6 @@
 export type Mood = "good" | "normal" | "bad";
 export type ExerciseType = "none" | "walk" | "strength" | "both";
+export type Gender = "female" | "male" | "other";
 
 export type TaskKey =
   | "breakfast"
@@ -31,6 +32,14 @@ export interface UserPlan {
   sleepTimeGoal: string;
 }
 
+export interface UserProfile {
+  nickname: string;
+  gender: Gender;
+  age: number | null;
+  heightCm: number | null;
+  completed: boolean;
+}
+
 export interface DailyRecord {
   date: string;
   dayIndex: number;
@@ -45,6 +54,7 @@ export interface DailyRecord {
 }
 
 export interface AppState {
+  profile: UserProfile;
   plan: UserPlan;
   records: DailyRecord[];
 }

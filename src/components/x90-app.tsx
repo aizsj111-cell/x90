@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   calculateDashboardStats,
   calculateEstimatedTargetDate,
+  createInitialState,
   generateFeedback,
   getTodayRecord,
   REMINDERS,
@@ -15,7 +16,16 @@ import {
   VIOLATION_LABELS,
 } from "@/lib/plan";
 import { loadState, saveState } from "@/lib/storage";
-import { AppState, DailyRecord, ExerciseType, Mood, TaskKey, UserPlan, ViolationKey } from "@/lib/types";
+import {
+  AppState,
+  DailyRecord,
+  ExerciseType,
+  Gender,
+  Mood,
+  TaskKey,
+  UserPlan,
+  ViolationKey,
+} from "@/lib/types";
 
 type TabKey = "home" | "checkin" | "data" | "settings";
 
@@ -26,51 +36,7 @@ function getTodayString() {
 }
 
 function createFallbackState(): AppState {
-  const today = getTodayString();
-
-  return {
-    plan: {
-      startDate: today,
-      days: 90,
-      startWeight: 72,
-      targetWeight: 57,
-      waterGoal: 2,
-      walkMinutesGoal: 40,
-      sleepTimeGoal: "23:30",
-    },
-    records: [
-      {
-        date: today,
-        dayIndex: 1,
-        weight: null,
-        waist: null,
-        mood: "normal",
-        exercise: "none",
-        tasks: {
-          breakfast: false,
-          lunch: false,
-          dinner: false,
-          water: false,
-          walk: false,
-          strength: false,
-          noMilkTea: false,
-          noLateSnack: false,
-          noSugaryDrink: false,
-          noBeer: false,
-          sleepEarly: false,
-        },
-        violations: {
-          lateSnack: false,
-          milkTea: false,
-          sugaryDrink: false,
-          beer: false,
-          lateSleep: false,
-        },
-        note: "",
-        completionRate: 0,
-      },
-    ],
-  };
+  return createInitialState(getTodayString());
 }
 
 function SectionCard({
@@ -263,17 +229,161 @@ export function X90App() {
     }));
   }
 
+  function updateProfile<Key extends keyof AppState["profile"]>(
+    key: Key,
+    value: AppState["profile"][Key],
+  ) {
+    setState((current) => ({
+      ...current,
+      profile: {
+        ...current.profile,
+        [key]: value,
+      },
+    }));
+  }
+
+  function completeOnboarding() {
+    if (
+      !state.profile.nickname.trim() ||
+      state.profile.age === null ||
+      state.profile.heightCm === null ||
+      !state.plan.startDate ||
+      !state.plan.startWeight ||
+      !state.plan.targetWeight
+    ) {
+      return;
+    }
+
+    setState((current) => ({
+      ...current,
+      profile: {
+        ...current.profile,
+        completed: true,
+      },
+    }));
+  }
+
   return (
     <main className="mx-auto min-h-screen w-full max-w-md px-4 pb-28 pt-6">
       <header className="mb-5 px-1">
         <p className="text-sm font-medium text-[var(--primary)]">X90 小张90天减肥计划</p>
-        <h1 className="mt-1 text-[2rem] font-semibold tracking-[-0.05em]">每天打开 30 秒，也算在变瘦</h1>
+        <h1 className="mt-1 text-[2rem] font-semibold tracking-[-0.05em]">
+          {state.profile.completed ? "每天打开 30 秒，也算在变瘦" : "开始你的 90 天"}
+        </h1>
         <p className="mt-2 text-sm text-[var(--muted)]">
-          Day {stats.dayIndex} / {state.plan.days} · 关闭后数据仍保存在本机
+          {state.profile.completed
+            ? `Day ${stats.dayIndex} / ${state.plan.days} · 关闭后数据仍保存在本机`
+            : "先填基础资料和目标，后面每天就能直接打卡。"}
         </p>
       </header>
 
       <div className="space-y-4">
+        {!state.profile.completed ? (
+          <section data-onboarding-root>
+            <SectionCard title="首次使用设置" subtitle="只用填一次，后面都可以在设置里改">
+              <div className="space-y-4">
+                <label className="block">
+                  <span className="mb-2 block text-sm text-[var(--muted)]">怎么称呼你</span>
+                  <input
+                    data-profile-field="nickname"
+                    value={state.profile.nickname}
+                    onChange={(event) => updateProfile("nickname", event.target.value)}
+                    placeholder="小张"
+                    className="relative z-10 block w-full touch-manipulation rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none"
+                  />
+                </label>
+                <div>
+                  <p className="mb-2 text-sm text-[var(--muted)]">性别</p>
+                  <div className="grid grid-cols-3 gap-2">
+                    {[
+                      ["female", "女生"],
+                      ["male", "男生"],
+                      ["other", "其他"],
+                    ].map(([value, label]) => (
+                      <button
+                        key={value}
+                        type="button"
+                        onClick={() => updateProfile("gender", value as Gender)}
+                        data-gender={value}
+                        className={`relative z-10 touch-manipulation rounded-2xl border px-4 py-3 ${
+                          state.profile.gender === value
+                            ? "border-blue-200 bg-blue-50 text-blue-700"
+                            : "border-slate-200 bg-white"
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <label className="block">
+                  <span className="mb-2 block text-sm text-[var(--muted)]">年龄</span>
+                  <input
+                    data-profile-field="age"
+                    value={state.profile.age ?? ""}
+                    onChange={(event) => updateProfile("age", toNumberOrNull(event.target.value))}
+                    inputMode="numeric"
+                    placeholder="30"
+                    className="relative z-10 block w-full touch-manipulation rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none"
+                  />
+                </label>
+                <label className="block">
+                  <span className="mb-2 block text-sm text-[var(--muted)]">身高 (cm)</span>
+                  <input
+                    data-profile-field="heightCm"
+                    value={state.profile.heightCm ?? ""}
+                    onChange={(event) =>
+                      updateProfile("heightCm", toNumberOrNull(event.target.value))
+                    }
+                    inputMode="decimal"
+                    placeholder="165"
+                    className="relative z-10 block w-full touch-manipulation rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none"
+                  />
+                </label>
+                <label className="block">
+                  <span className="mb-2 block text-sm text-[var(--muted)]">开始日期</span>
+                  <input
+                    type="date"
+                    data-plan-field="startDate"
+                    value={state.plan.startDate}
+                    onChange={(event) => updatePlan("startDate", event.target.value)}
+                    className="relative z-10 block w-full touch-manipulation rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none"
+                  />
+                </label>
+                <label className="block">
+                  <span className="mb-2 block text-sm text-[var(--muted)]">起始体重 (kg)</span>
+                  <input
+                    data-plan-field="startWeight"
+                    value={state.plan.startWeight}
+                    onChange={(event) => updatePlan("startWeight", Number(event.target.value))}
+                    inputMode="decimal"
+                    className="relative z-10 block w-full touch-manipulation rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none"
+                  />
+                </label>
+                <label className="block">
+                  <span className="mb-2 block text-sm text-[var(--muted)]">目标体重 (kg)</span>
+                  <input
+                    data-plan-field="targetWeight"
+                    value={state.plan.targetWeight}
+                    onChange={(event) => updatePlan("targetWeight", Number(event.target.value))}
+                    inputMode="decimal"
+                    className="relative z-10 block w-full touch-manipulation rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none"
+                  />
+                </label>
+                <button
+                  type="button"
+                  data-onboarding-submit="true"
+                  onClick={completeOnboarding}
+                  className="relative z-10 block w-full touch-manipulation rounded-2xl bg-[var(--primary)] px-4 py-4 text-center text-base font-semibold text-white"
+                >
+                  开始我的 90 天
+                </button>
+              </div>
+            </SectionCard>
+          </section>
+        ) : null}
+
+        <div data-app-shell style={{ display: state.profile.completed ? "block" : "none" }}>
         <div data-section="home" style={{ display: tab === "home" ? "block" : "none" }}>
           <>
             <SectionCard title="今日概览" subtitle="核心进度一眼看清">
@@ -488,6 +598,65 @@ export function X90App() {
 
         <div data-section="settings" style={{ display: tab === "settings" ? "block" : "none" }}>
           <>
+            <SectionCard title="个人资料" subtitle="这些信息只保存在你的手机或浏览器里">
+              <div className="space-y-4">
+                <label className="block">
+                  <span className="mb-2 block text-sm text-[var(--muted)]">昵称</span>
+                  <input
+                    data-profile-field="nickname"
+                    value={state.profile.nickname}
+                    onChange={(event) => updateProfile("nickname", event.target.value)}
+                    className="relative z-10 block w-full touch-manipulation rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none"
+                  />
+                </label>
+                <div>
+                  <p className="mb-2 text-sm text-[var(--muted)]">性别</p>
+                  <div className="grid grid-cols-3 gap-2">
+                    {[
+                      ["female", "女生"],
+                      ["male", "男生"],
+                      ["other", "其他"],
+                    ].map(([value, label]) => (
+                      <button
+                        key={value}
+                        type="button"
+                        onClick={() => updateProfile("gender", value as Gender)}
+                        data-gender={value}
+                        className={`relative z-10 touch-manipulation rounded-2xl border px-4 py-3 ${
+                          state.profile.gender === value
+                            ? "border-blue-200 bg-blue-50 text-blue-700"
+                            : "border-slate-200 bg-white"
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <label className="block">
+                  <span className="mb-2 block text-sm text-[var(--muted)]">年龄</span>
+                  <input
+                    data-profile-field="age"
+                    value={state.profile.age ?? ""}
+                    onChange={(event) => updateProfile("age", toNumberOrNull(event.target.value))}
+                    inputMode="numeric"
+                    className="relative z-10 block w-full touch-manipulation rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none"
+                  />
+                </label>
+                <label className="block">
+                  <span className="mb-2 block text-sm text-[var(--muted)]">身高 (cm)</span>
+                  <input
+                    data-profile-field="heightCm"
+                    value={state.profile.heightCm ?? ""}
+                    onChange={(event) =>
+                      updateProfile("heightCm", toNumberOrNull(event.target.value))
+                    }
+                    inputMode="decimal"
+                    className="relative z-10 block w-full touch-manipulation rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none"
+                  />
+                </label>
+              </div>
+            </SectionCard>
             <SectionCard title="计划设置" subtitle="目标先简单，先把坚持做出来">
               <div className="space-y-4">
                 <label className="block">
@@ -547,9 +716,11 @@ export function X90App() {
             </SectionCard>
           </>
         </div>
+        </div>
       </div>
 
-      <nav className="sticky bottom-4 z-20 mt-6 flex w-full gap-2 rounded-[28px] border border-slate-200 bg-white p-2 shadow-[0_18px_48px_rgba(15,23,42,0.14)]">
+      {state.profile.completed ? (
+      <nav data-bottom-nav className="sticky bottom-4 z-20 mt-6 flex w-full gap-2 rounded-[28px] border border-slate-200 bg-white p-2 shadow-[0_18px_48px_rgba(15,23,42,0.14)]">
         {[
           ["home", "首页"],
           ["checkin", "打卡"],
@@ -569,6 +740,7 @@ export function X90App() {
           </button>
         ))}
       </nav>
+      ) : null}
     </main>
   );
 }

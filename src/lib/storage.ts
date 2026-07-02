@@ -1,3 +1,4 @@
+import { createDefaultProfile } from "@/lib/plan";
 import { AppState } from "@/lib/types";
 
 const STORAGE_KEY = "x90-app-state";
@@ -13,7 +14,13 @@ export function loadState(): AppState | null {
   }
 
   try {
-    return JSON.parse(raw) as AppState;
+    const parsed = JSON.parse(raw) as Partial<AppState>;
+
+    return {
+      profile: parsed.profile ?? createDefaultProfile(),
+      plan: parsed.plan as AppState["plan"],
+      records: parsed.records as AppState["records"],
+    };
   } catch {
     return null;
   }

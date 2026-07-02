@@ -2,6 +2,7 @@ import {
   AppState,
   DailyFeedback,
   DailyRecord,
+  UserProfile,
   TaskKey,
   UserPlan,
   ViolationKey,
@@ -61,6 +62,16 @@ export const REMINDERS = [
   { time: "23:00", label: "准备睡觉" },
 ];
 
+export function createDefaultProfile(): UserProfile {
+  return {
+    nickname: "",
+    gender: "female",
+    age: null,
+    heightCm: null,
+    completed: false,
+  };
+}
+
 export function createDefaultPlan(today: string): UserPlan {
   return {
     startDate: today,
@@ -92,6 +103,7 @@ export function createEmptyDailyRecord(date: string, dayIndex: number): DailyRec
 
 export function createInitialState(today: string): AppState {
   return {
+    profile: createDefaultProfile(),
     plan: createDefaultPlan(today),
     records: [createEmptyDailyRecord(today, 1)],
   };

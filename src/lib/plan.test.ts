@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   calculateDashboardStats,
   calculateEstimatedTargetDate,
+  createDefaultProfile,
   createEmptyDailyRecord,
   createInitialState,
   generateFeedback,
@@ -13,10 +14,25 @@ describe("plan helpers", () => {
   it("creates the initial state with defaults", () => {
     const state = createInitialState("2026-07-01");
 
+    expect(state.profile.nickname).toBe("");
+    expect(state.profile.gender).toBe("female");
+    expect(state.profile.age).toBeNull();
+    expect(state.profile.heightCm).toBeNull();
+    expect(state.profile.completed).toBe(false);
     expect(state.plan.startWeight).toBe(72);
     expect(state.plan.targetWeight).toBe(57);
     expect(state.records).toHaveLength(1);
     expect(state.records[0].dayIndex).toBe(1);
+  });
+
+  it("creates a default onboarding profile", () => {
+    const profile = createDefaultProfile();
+
+    expect(profile.nickname).toBe("");
+    expect(profile.gender).toBe("female");
+    expect(profile.age).toBeNull();
+    expect(profile.heightCm).toBeNull();
+    expect(profile.completed).toBe(false);
   });
 
   it("builds an empty daily record with all tasks tracked", () => {
